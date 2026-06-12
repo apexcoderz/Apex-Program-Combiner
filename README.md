@@ -11,19 +11,19 @@ No external dependencies required. Requires Python 3.6+.
 ```bash
 git clone https://github.com/apexcoderz/Apex-Program-Combiner.git
 cd Apex-Program-Combiner
-chmod +x combine_files_apex.py
+chmod +x Apex_codecombiner.py
 ```
 
 ## Usage
 ```bash
 # Standard recursive combination
-python combine_files_apex.py ./my_project
+python Apex_codecombiner.py ./my_project
 
 # Specify custom output file
-python combine_files_apex.py ./my_project -o combined.md
+python Apex_codecombiner.py ./my_project -o combined.md
 
 # Disable recursive search
-python combine_files_apex.py ./my_project --no-recursive
+python Apex_codecombiner.py ./my_project --no-recursive
 
 ```
 
@@ -32,28 +32,6 @@ python combine_files_apex.py ./my_project --no-recursive
 2. Create a feature branch (`git checkout -b feature/new-extension`).
 3. Commit changes using Semantic Commit messages.
 4. Push and open a Pull Request.
-```
-
-#### `.gitignore`
-```text
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-.env
-.venv
-env/
-venv/
-
-# IDEs
-.vscode/
-.idea/
-
-# Default output files
-program.md
-combined*.md
 ```
 
 #### Directory Structure
