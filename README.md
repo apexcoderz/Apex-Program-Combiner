@@ -34,28 +34,6 @@ python combine_files_apex.py ./my_project --no-recursive
 4. Push and open a Pull Request.
 ```
 
-#### `.gitignore`
-```text
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-.env
-.venv
-env/
-venv/
-
-# IDEs
-.vscode/
-.idea/
-
-# Default output files
-program.md
-combined*.md
-```
-
 #### Directory Structure
 ```text
 source-combiner/
