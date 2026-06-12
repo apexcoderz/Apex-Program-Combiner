@@ -1,144 +1,91 @@
 #!/usr/bin/env python3
 """
-Combines all .ino, .c, .cpp, .html, .h, and .py files in a folder (including subfolders) 
-into a single program.md file.
+Combines source code files into a single Markdown file for review or documentation.
+Created with enhancements by apexcoderz
 """
-
-import os
+import argparse
+import logging
 import sys
 from pathlib import Path
+from typing import Iterable
 
+# Configure logging for professional CLI output
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-def get_code_block_language(extension):
-    """Return the appropriate language identifier for markdown code blocks."""
-    language_map = {
-        '.ino': 'cpp',
-        '.c': 'c',
-        '.cpp': 'cpp',
-        '.h': 'cpp',
-        '.html': 'html',
-        '.py': 'python'
-    }
-    return language_map.get(extension, 'text')
+# Supported extensions mapped to Markdown language identifiers
+LANGUAGE_MAP = {
+    '.ino': 'cpp', '.c': 'c', '.cpp': 'cpp',
+    '.h': 'cpp', '.html': 'html', '.py': 'python'
+}
 
+def get_code_block_language(extension: str) -> str:
+    """Returns the Markdown language identifier for a given file extension."""
+    return LANGUAGE_MAP.get(extension.lower(), 'text')
 
-def combine_files(folder_path, output_file='program.md', recursive=True):
-    """
-    Combine all relevant files in the folder into a single markdown file.
-    
-    Args:
-        folder_path: Path to the folder containing the files
-        output_file: Name of the output file (default: program.md)
-        recursive: If True, search in subfolders too (default: True)
-    """
-    # Supported file extensions
-    extensions = {'.ino', '.c', '.cpp', '.html', '.h', '.py'}
-    
-    # Convert to Path object
-    folder = Path(folder_path)
-    
-    if not folder.exists():
-        print(f"Error: Folder '{folder_path}' does not exist.")
+def find_files(folder: Path, recursive: bool) -> Iterable[Path]:
+    """Yields matching files from the directory tree."""
+    extensions = LANGUAGE_MAP.keys()
+    for ext in extensions:
+        pattern = f'*{ext}'
+        # Use rglob for recursive, glob for shallow search
+        paths = folder.rglob(pattern) if recursive else folder.glob(pattern)
+        yield from paths
+
+def combine_files(folder_path: Path, output_file: str, recursive: bool) -> bool:
+    """Reads target files and concatenates them into a formatted Markdown file."""
+    if not folder_path.is_dir():
+        logging.error(f"Directory not found: {folder_path}")
         return False
     
-    if not folder.is_dir():
-        print(f"Error: '{folder_path}' is not a directory.")
-        return False
-    
-    # Find all matching files
-    files = []
-    if recursive:
-        # Search recursively in all subfolders
-        for ext in extensions:
-            files.extend(folder.rglob(f'*{ext}'))
-    else:
-        # Search only in the main folder
-        for ext in extensions:
-            files.extend(folder.glob(f'*{ext}'))
-    
-    # Sort files by full path for consistent output
-    files = sorted(files, key=lambda x: str(x))
-    
+    # Sort to ensure deterministic output order
+    files = sorted(find_files(folder_path, recursive))
     if not files:
-        print(f"No files with extensions {extensions} found in '{folder_path}'.")
+        logging.warning(f"No matching files found in {folder_path}.")
         return False
     
-    # Create the output file
-    output_path = folder / output_file
+    output_path = folder_path / output_file
     
     try:
-        with open(output_path, 'w', encoding='utf-8') as out:
+        with output_path.open('w', encoding='utf-8') as out:
+            # Add watermark header
+            out.write("<!-- Generated with apexcoderz Code Combiner -->\n\n")
+            
             for file_path in files:
-                # Read file contents
+                # Primary UTF-8 attempt, fallback to latin-1 for legacy file compatibility
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
+                    content = file_path.read_text(encoding='utf-8')
                 except UnicodeDecodeError:
-                    # Try with a different encoding if UTF-8 fails
-                    with open(file_path, 'r', encoding='latin-1') as f:
-                        content = f.read()
+                    content = file_path.read_text(encoding='latin-1')
                 
-                # Get relative path from the main folder for the header
-                try:
-                    relative_path = file_path.relative_to(folder)
-                except ValueError:
-                    relative_path = file_path.name
-                
-                # Get the language for the code block
-                language = get_code_block_language(file_path.suffix)
-                
-                # Write to output file
-                out.write(f"## {relative_path}\n")
-                out.write(f"```{language}\n")
-                out.write(content)
-                # Ensure content ends with a newline
+                # Calculate relative path for documentation headers
+                rel_path = file_path.relative_to(folder_path)
+                lang = get_code_block_language(file_path.suffix)
+                out.write(f"## {rel_path}\n```{lang}\n{content}")
+                # Ensure code block ends cleanly
                 if not content.endswith('\n'):
                     out.write('\n')
                 out.write("```\n\n")
         
-        print(f"Successfully combined {len(files)} files into '{output_path}'")
-        print(f"\nProcessed files:")
-        for file_path in files:
-            try:
-                relative_path = file_path.relative_to(folder)
-                print(f"  - {relative_path}")
-            except ValueError:
-                print(f"  - {file_path.name}")
+        logging.info(f"Combined {len(files)} files into {output_path}")
         return True
-        
-    except Exception as e:
-        print(f"Error writing output file: {e}")
+    except IOError as e:
+        logging.error(f"File operation failed: {e}")
         return False
 
-
-def main():
-    """Main function to handle command-line arguments."""
-    if len(sys.argv) < 2:
-        print("Usage: python combine_files.py <folder_path> [output_file] [--no-recursive]")
-        print("\nExample:")
-        print("  python combine_files.py ./my_project")
-        print("  python combine_files.py ./my_project combined_code.md")
-        print("  python combine_files.py ./my_project program.md --no-recursive")
-        print("\nBy default, searches in subfolders. Use --no-recursive to search only in main folder.")
-        sys.exit(1)
+def main() -> None:
+    """CLI entry point utilizing argparse for robust flag handling."""
+    parser = argparse.ArgumentParser(
+        description="Combine source files into a Markdown document.",
+        epilog="Built with apexcoderz enhancements"
+    )
+    parser.add_argument("folder", type=Path, help="Target directory containing source files")
+    parser.add_argument("-o", "--output", default="program.md", help="Output filename (default: program.md)")
+    parser.add_argument("--no-recursive", action="store_true", help="Disable recursive search in subdirectories")
     
-    folder_path = sys.argv[1]
-    output_file = 'program.md'
-    recursive = True
+    args = parser.parse_args()
     
-    # Parse optional arguments
-    if len(sys.argv) > 2:
-        if sys.argv[2] == '--no-recursive':
-            recursive = False
-        else:
-            output_file = sys.argv[2]
-    
-    if len(sys.argv) > 3 and sys.argv[3] == '--no-recursive':
-        recursive = False
-    
-    success = combine_files(folder_path, output_file, recursive)
+    success = combine_files(args.folder, args.output, not args.no_recursive)
     sys.exit(0 if success else 1)
-
 
 if __name__ == '__main__':
     main()
