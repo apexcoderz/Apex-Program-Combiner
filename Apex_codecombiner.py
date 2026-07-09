@@ -48,7 +48,7 @@ def print_easter_egg() -> None:
    /   O      O   \      "Code with love."
   :                 :
   |                 |     built by  apexcoderz x AP
-  :    \        /   :     for       Lahbakosan
+  :    \        /   :     for       everyone 
    \    '.____.'    /
     '.            .'
       '-.......-'
